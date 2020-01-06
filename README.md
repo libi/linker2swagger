@@ -6,10 +6,10 @@ A eolinker to swagger json converter script *(roughly done)*.
 Eolinker is a great API management software, please don't misunderstanding this as any sort of bad tended script against this greate tool. (You don't have read the next few lines)
 
 
-But as for my scene, Eolinker is a bit too much. Both from the cost and the function.
+But as for my scene, Eolinker is a bit too much. Whether the cost or the function.
 So when I'm trying to export my data out of eolinker, the only format available is their own format(which is json) or documents.
 
-Firstly, I'm greatful that they did opensource their early version of software, and due to whatever reason they decide to pull their code off from every git platform, and I respect their decision. 
+Firstly, I'm grateful that they did opensource their early version of software, and due to whatever reason they decide to pull their code off from every git platform, and I respect their decision. 
 But I think it is important to give people like me a chance to pull our data out of their platform. Obviously they can make their own format into binary stuff and they don't. I'm appreciated.
 Before doing this I haven't do the research that if anyone have done this before. Because this is just for my personal use, so it's badly done, so many flaws inside. So if there is a better one please tell me to delete this repo, or if it has none, please help me make this script better.
 
