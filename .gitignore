@@ -1,3 +1,3 @@
-./vscode
-./eo-in/*
-./sw-out/*
+.vscode
+eo-in/*
+sw-out/*
