@@ -10,7 +10,77 @@ console.log(convertFiles);
 batchConvert(convertFiles)
 
 return;
+function convertSingle(swagger,singleApi,path,tags){
 
+
+    var consumeType = ["application/json"];
+
+    if (path[0] !== "/"){
+        path = "/"+path;
+    }
+    // create path template if path not exist
+    //console.log(eolink.apiGroupList[group].apiList[api]);return;
+    // TODO: write this to json file
+
+    //apiRequestType  0 post 1 get
+
+    console.log("parse", parseResponse(singleApi.resultInfo));
+
+    if (singleApi.baseInfo)
+        swagger.paths[path] = {};
+    var tmpd = {
+        tags: tags,
+        summary: singleApi.baseInfo.apiName,
+        description: "",
+        consumes: consumeType,
+        parameters: [
+            {
+                name: "root",
+                in: "body",
+                schema: {
+                    type: "object",
+                    properties: {},
+                    // required: []
+                }
+            }
+        ],
+        responses: {
+            200: {
+                description: 'success',
+                schema: {}
+            }
+        }
+    }
+
+    if (singleApi.baseInfo.apiRequestType === 1) {
+        swagger.paths[path].get = tmpd;
+        // convert api
+        swagger.paths[path].get.parameters[0].schema.properties = parseParam(singleApi.requestInfo);
+        swagger.paths[path].get.responses[200].schema = parseResponse(singleApi.resultInfo);
+    } else {
+        swagger.paths[path].post = tmpd;
+        // convert api
+        swagger.paths[path].post.parameters[0].schema.properties = parseParam(singleApi.requestInfo);
+        swagger.paths[path].post.responses[200].schema = parseResponse(singleApi.resultInfo);
+    }
+}
+function convertGroup(parentTags,apiGroupList,swagger) {
+    //var parentTags = JSON.parse(JSON.stringify(parentTags));
+    for (var group in apiGroupList) {
+        for (var api in apiGroupList[group].apiList) {
+            parentTags.push(apiGroupList[group].groupName);
+            var singleApi = apiGroupList[group].apiList[api];
+            var path = apiGroupList[group].apiList[api].baseInfo.apiURI;
+
+            convertSingle(swagger,singleApi,path,parentTags);
+
+            if(apiGroupList[group].apiGroupChildList.length > 0){
+                convertGroup(parentTags,apiGroupList[group].apiGroupChildList,swagger);
+            }
+            parentTags = [];
+        }
+    }
+}
 function convert(path, file) {
     var inputFile = path + '/' + file
     var eolink = JSON.parse(fs.readFileSync(inputFile));
@@ -18,70 +88,12 @@ function convert(path, file) {
     var swagger = swaggerPreset(eolink.groupName);
 
     // Global config
-    var consumeType = ["application/json"];
+    var count = 0;
 
-    for (var group in eolink.apiGroupList) {
-        for (var api in eolink.apiGroupList[group].apiList) {
-            console.log("-----", api);
-            var singleApi = eolink.apiGroupList[group].apiList[api]
-            var path = eolink.apiGroupList[group].apiList[api].baseInfo.apiURI
-            if (!swagger.paths[path]) {
-                // create path template if path not exist
-                //console.log(eolink.apiGroupList[group].apiList[api]);return;
-                // TODO: write this to json file
+    var apiGroupList = eolink.apiGroupList;
+    convertGroup([],apiGroupList,swagger);
 
-                //apiRequestType  0 post 1 get
-
-                console.log("parse", parseResponse(eolink.apiGroupList[group].apiList[api].resultInfo));
-
-                if (eolink.apiGroupList[group].apiList[api].baseInfo)
-                    swagger.paths[path] = {};
-                    var tmpd = {
-                        // tags: eolink.apiGroupList[group].apiList[api].baseInfo.apiTag.split(","),
-                        summary: eolink.apiGroupList[group].apiList[api].baseInfo.apiName,
-                        description: "",
-                        consumes: consumeType,
-                        parameters: [
-                            {
-                                name: "root",
-                                in: "body",
-                                schema: {
-                                    type: "object",
-                                    properties: {},
-                                    // required: []
-                                }
-                            }
-                        ],
-                        responses: {
-                            200: {
-                                description: 'success',
-                                schema: {}
-                            }
-                        }
-                    }
-
-                gapi = eolink.apiGroupList[group].apiList[api]
-                console.log(gapi.requestInfo)
-                if(eolink.apiGroupList[group].apiList[api].baseInfo.apiRequestType === 1){
-                    swagger.paths[path].get = tmpd;
-                    // convert api
-                    swagger.paths[path].get.parameters[0].schema.properties = parseParam(gapi.requestInfo);
-                    swagger.paths[path].get.responses[200].schema = parseResponse(gapi.resultInfo);
-                }else{
-                    swagger.paths[path].post = tmpd;
-                    // convert api
-                    swagger.paths[path].post.parameters[0].schema.properties = parseParam(gapi.requestInfo);
-                    swagger.paths[path].post.responses[200].schema = parseResponse(gapi.resultInfo);
-                }
-
-            }
-
-
-        }
-    }
-
-
-    console.log(swagger)
+    console.log(swagger,Object.getOwnPropertyNames(swagger.paths).length);
     var writeFile = JSON.stringify(swagger);
     fs.writeFileSync('./sw-out/' + file, writeFile, function (err) {
         if (err) {
@@ -89,6 +101,7 @@ function convert(path, file) {
         }
         console.log('=====> 🍺写入成功 (￣^￣)ゞ ' + './sw-out/' + file)
     })
+
 }
 
 function parseParam(params) {
@@ -112,17 +125,17 @@ function parseParam(params) {
                 };
             }
         } else {
-            if (params[param].paramValueList.length === 0) {
-                result[params[param].paramKey] = {
-                    type: "string"
-                };
-            } else {
-                console.log(params[param].paramKey);
-                result[params[param].paramKey] = {
-                    type: "object",
-                    properties: parseParam(params[param].paramValueList)
-                };
-            }
+            //if (params[param].paramValueList.length === 0) {
+            result[params[param].paramKey] = {
+                type: "string"
+            };
+            // } else {
+            //     console.log(params[param].paramKey);
+            //     result[params[param].paramKey] = {
+            //         type: "object",
+            //         properties: parseParam(params[param].paramValueList)
+            //     };
+            // }
         }
     }
     return result;
@@ -151,6 +164,18 @@ function parseResponse(resultInfo) {
         var tmp = result;
         for (var n in currKeys) {
             var currentKey = currKeys[n];
+            if (tmp === undefined) {
+                switch (currentType) {
+                    case "12":
+                        tmp = [{}];
+                        break;
+                    case "13":
+                        tmp = {};
+                        break;
+                    default:
+                        tmp = "";
+                }
+            }
             if (tmp[currentKey] === undefined) {
                 switch (currentType) {
                     case "12":
@@ -174,7 +199,7 @@ function parseResponse(resultInfo) {
         }
     }
 
-    var schema = GenerateSchema.json("success",result);
+    var schema = GenerateSchema.json("success", result);
 
     return schema;
 
