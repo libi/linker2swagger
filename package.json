@@ -1,0 +1,22 @@
+{
+  "name": "linker2swagger",
+  "version": "1.0.0",
+  "description": "A eolinker to swagger json converter script *(roughly done)*.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/libi/linker2swagger.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/libi/linker2swagger/issues"
+  },
+  "homepage": "https://github.com/libi/linker2swagger#readme",
+  "dependencies": {
+    "generate-schema": "^2.6.0"
+  }
+}

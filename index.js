@@ -1,6 +1,7 @@
 var fs = require("fs");
 var path = require("path");
 var input = path.join("./eo-in");
+var GenerateSchema = require('generate-schema');
 
 var convertFiles = readDirSync(input);
 var gapi = {}
@@ -11,154 +12,218 @@ batchConvert(convertFiles)
 return;
 
 function convert(path, file) {
-  var inputFile = path + '/' + file
-  var eolink = JSON.parse(fs.readFileSync(inputFile));
-  console.log(eolink)
-  var swagger = swaggerPreset(eolink.groupName);
+    var inputFile = path + '/' + file
+    var eolink = JSON.parse(fs.readFileSync(inputFile));
+    console.log("a", eolink)
+    var swagger = swaggerPreset(eolink.groupName);
 
-  // Global config
-  var consumeType = ["application/json"];
+    // Global config
+    var consumeType = ["application/json"];
 
-  for (var api in eolink.apiList) {
-    var singleApi = eolink.apiList[api]
-    var path = eolink.apiList[api].baseInfo.apiURI
-    if (!swagger.paths[path]) {
-      // create path template if path not exist
-      // TODO: write this to json file
-      swagger.paths[path] = {
-        post: {
-          tags: eolink.apiList[api].baseInfo.apiTag.split(","),
-          summary: eolink.apiList[api].baseInfo.apiName,
-          description: "",
-          consumes: consumeType,
-          parameters: [
-            {
-              name: "root",
-              in: "body",
-              schema: {
-                type: "object",
-                properties: {},
-                // required: []
-              }
-            }
-          ],
-          responses: {
-            // TODO: parse reponse from source
-            200: {
-              description: 'success',
-              schema: {
-                type: "object",
-                title: "empty object",
-                properties: {
-                  success: {
-                    type: "boolean"
-                  },
-                  message: {
-                    type: "string"
-                  }
+    for (var group in eolink.apiGroupList) {
+        for (var api in eolink.apiGroupList[group].apiList) {
+            console.log("-----", api);
+            var singleApi = eolink.apiGroupList[group].apiList[api]
+            var path = eolink.apiGroupList[group].apiList[api].baseInfo.apiURI
+            if (!swagger.paths[path]) {
+                // create path template if path not exist
+                //console.log(eolink.apiGroupList[group].apiList[api]);return;
+                // TODO: write this to json file
+
+                //apiRequestType  0 post 1 get
+
+                console.log("parse", parseResponse(eolink.apiGroupList[group].apiList[api].resultInfo));
+
+                if (eolink.apiGroupList[group].apiList[api].baseInfo)
+                    swagger.paths[path] = {};
+                    var tmpd = {
+                        // tags: eolink.apiGroupList[group].apiList[api].baseInfo.apiTag.split(","),
+                        summary: eolink.apiGroupList[group].apiList[api].baseInfo.apiName,
+                        description: "",
+                        consumes: consumeType,
+                        parameters: [
+                            {
+                                name: "root",
+                                in: "body",
+                                schema: {
+                                    type: "object",
+                                    properties: {},
+                                    // required: []
+                                }
+                            }
+                        ],
+                        responses: {
+                            200: {
+                                description: 'success',
+                                schema: {}
+                            }
+                        }
+                    }
+
+                gapi = eolink.apiGroupList[group].apiList[api]
+                console.log(gapi.requestInfo)
+                if(eolink.apiGroupList[group].apiList[api].baseInfo.apiRequestType === 1){
+                    swagger.paths[path].get = tmpd;
+                    // convert api
+                    swagger.paths[path].get.parameters[0].schema.properties = parseParam(gapi.requestInfo);
+                    swagger.paths[path].get.responses[200].schema = parseResponse(gapi.resultInfo);
+                }else{
+                    swagger.paths[path].post = tmpd;
+                    // convert api
+                    swagger.paths[path].post.parameters[0].schema.properties = parseParam(gapi.requestInfo);
+                    swagger.paths[path].post.responses[200].schema = parseResponse(gapi.resultInfo);
                 }
-              }
+
             }
-          }
+
+
         }
-      };
     }
 
-    // convert api
-    gapi = eolink.apiList[api]
-    console.log(gapi.requestInfo)
-    swagger.paths[path].post.parameters[0].schema.properties = parseParam(gapi.requestInfo)
-  }
-  console.log(swagger)
-  var writeFile = JSON.stringify(swagger);
-  fs.writeFileSync('./sw-out/' + file, writeFile, function (err) {
-    if (err) {
-      console.error(err)
-    }
-    console.log('=====> 🍺写入成功 (￣^￣)ゞ ' + './sw-out/' + file)
-  })
+
+    console.log(swagger)
+    var writeFile = JSON.stringify(swagger);
+    fs.writeFileSync('./sw-out/' + file, writeFile, function (err) {
+        if (err) {
+            console.error(err)
+        }
+        console.log('=====> 🍺写入成功 (￣^￣)ゞ ' + './sw-out/' + file)
+    })
 }
 
 function parseParam(params) {
-  var result = {};
-  for (var param in params) {
-    // data structure
-    if (params[param].structureID) {
-      var structureData = gapi.dataStructureList.filter(function (
-        item
-      ) {
-        return item.structureID == params[param].structureID;
-      });
-      // TODO: support child object
-      var structDataArray = convertStructureData(structureData[0].structureData);
-      for (var key in structDataArray) {
-        result[structDataArray[key]] = {
-          // TODO: create type enum
-          // 13. object; 0. string;
-          type: "string"
-        };
-      }
-    } else {
-      if (params[param].childList.length === 0) {
-        result[params[param].paramKey] = {
-          type: "string"
-        };
-      } else {
-        console.log(params[param].paramKey);
-        result[params[param].paramKey] = {
-          type: "object",
-          properties: parseParam(params[param].childList)
-        };
-      }
+    console.log('params', params);
+    var result = {};
+    for (var param in params) {
+        // data structure
+        if (params[param].structureID) {
+            var structureData = gapi.dataStructureList.filter(function (
+                item
+            ) {
+                return item.structureID == params[param].structureID;
+            });
+            // TODO: support child object
+            var structDataArray = convertStructureData(structureData[0].structureData);
+            for (var key in structDataArray) {
+                result[structDataArray[key]] = {
+                    // TODO: create type enum
+                    // 13. object; 0. string;
+                    type: "string"
+                };
+            }
+        } else {
+            if (params[param].paramValueList.length === 0) {
+                result[params[param].paramKey] = {
+                    type: "string"
+                };
+            } else {
+                console.log(params[param].paramKey);
+                result[params[param].paramKey] = {
+                    type: "object",
+                    properties: parseParam(params[param].paramValueList)
+                };
+            }
+        }
     }
-  }
-  return result;
+    return result;
+}
+
+// {
+//   "paramNotNull": "0",
+//     "paramName": "",
+//     "paramKey": "data>>list",
+//     "type": "0",
+//     "paramType": "12",  12arr 13object
+//     "paramValueList": [],
+//     "$index": 8
+// },
+function parseResponse(resultInfo) {
+    var result = {};
+    var hasArr = {};
+    for (var i in resultInfo) {
+        var curr = resultInfo[i];
+        var currKeys = curr.paramKey.split(">>");
+        if (currKeys.length === 0) {
+            continue;
+        }
+        var currentType = curr.paramType; //12arr 13object
+
+        var tmp = result;
+        for (var n in currKeys) {
+            var currentKey = currKeys[n];
+            if (tmp[currentKey] === undefined) {
+                switch (currentType) {
+                    case "12":
+                        tmp[currentKey] = [{}];
+                        break;
+                    case "13":
+                        tmp[currentKey] = {};
+                        break;
+                    default:
+                        tmp[currentKey] = "";
+                }
+            }
+            if (Array.isArray(tmp[currentKey])) {
+                console.log("hasarr", currentKey);
+                hasArr[currentKey] = true;
+                tmp = tmp[currentKey][0];
+                console.log(result, tmp);
+            } else {
+                tmp = tmp[currentKey];
+            }
+        }
+    }
+
+    var schema = GenerateSchema.json("success",result);
+
+    return schema;
+
 }
 
 function convertStructureData(str) {
-  var result = [];
-  var structure = JSON.parse(decodeURIComponent(str));
-  for (var param in structure) {
-    result.push(structure[param].paramKey);
-  }
-  return result;
+    var result = [];
+    var structure = JSON.parse(decodeURIComponent(str));
+    for (var param in structure) {
+        result.push(structure[param].paramKey);
+    }
+    return result;
 }
 
 function batchConvert(pathArray) {
-  for (var file in pathArray) {
-    convert(pathArray[file].path, pathArray[file].file)
-  }
+    for (var file in pathArray) {
+        convert(pathArray[file].path, pathArray[file].file)
+    }
 }
 
 function swaggerPreset(title) {
-  return {
-    swagger: "2.0",
-    info: {
-      title: title,
-      version: "last"
-    },
-    basePath: "/",
-    tags: [
-      {
-        name: title,
-        description: title
-      }
-    ],
-    schemes: ["https"],
-    paths: {}
-  };
+    return {
+        swagger: "2.0",
+        info: {
+            title: title,
+            version: "last"
+        },
+        basePath: "/",
+        tags: [
+            {
+                name: title,
+                description: title
+            }
+        ],
+        schemes: ["https"],
+        paths: {}
+    };
 }
 
 function readDirSync(path) {
-  var pa = fs.readdirSync(path);
-  var result = [];
-  pa.forEach(function (ele, index) {
-    var currPath = path + "/" + ele;
-    console.log("Added file: " + currPath);
-    result.push({
-      path: path,
-      file: ele
+    var pa = fs.readdirSync(path);
+    var result = [];
+    pa.forEach(function (ele, index) {
+        var currPath = path + "/" + ele;
+        console.log("Added file: " + currPath);
+        result.push({
+            path: path,
+            file: ele
+        });
     });
-  });
-  return result
+    return result
 }
