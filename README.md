@@ -1,6 +1,6 @@
 # linker2swagger
 A eolinker to swagger json converter script *(roughly done)*.
-
+一个将eolinker数据转换未 swagger 的转换器，以方便导入 Yapi,Postman 等其他工具内。
 ## Useless crap
 
 Eolinker is a great API management software, please don't misunderstanding this as any sort of bad tended script against this greate tool. (You don't have read the next few lines)
